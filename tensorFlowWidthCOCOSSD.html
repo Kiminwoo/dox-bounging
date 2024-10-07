@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Object Detection in MP4 Video</title>
+  <style>
+    .container {
+      position: relative;
+    }
+    video {
+      width: 640px;
+      height: 360px;
+    }
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none; /* 캔버스는 클릭 이벤트를 받지 않도록 */
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <video id="video" controls>
+    <source src="../도로_영상/detection_before/20240827_일반국도(17호선)/DRV_INF/20240826_23/20240826_235543_DI_F.mp4" type="video/mp4" />
+    Your browser does not support the video tag.
+  </video>
+  <canvas id="canvas"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+<script>
+  const video = document.getElementById("video");
+  const canvas = document.getElementById("canvas");
+  const context = canvas.getContext("2d");
+
+  // COCO-SSD 모델 로드
+  let model;
+  cocoSsd.load().then(loadedModel => {
+    model = loadedModel;
+  });
+
+  // 비디오가 재생될 때 캔버스 크기를 비디오에 맞게 조정
+  video.addEventListener("loadedmetadata", () => {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+  });
+
+  // 비디오에서 객체 인식을 수행하고, 결과를 캔버스에 그리기
+  video.addEventListener("play", () => {
+    function detectObjects() {
+      if (video.paused || video.ended) {
+        return; // 비디오가 멈췄다면, 객체 탐지를 중지
+      }
+
+      // 모델로 비디오 프레임에서 객체 탐지 수행
+      model.detect(video).then(predictions => {
+        // 캔버스 지우기
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 예측된 객체의 바운딩 박스와 라벨을 그리기
+        predictions.forEach(prediction => {
+          const [x, y, width, height] = prediction.bbox;
+          context.beginPath();
+          context.rect(x, y, width, height);
+          context.lineWidth = 2;
+          context.strokeStyle = "red";
+          context.fillStyle = "red";
+          context.stroke();
+          context.font = "18px Arial";
+          context.fillText(
+            `${prediction.class} (${Math.round(prediction.score * 100)}%)`,
+            x,
+            y > 10 ? y - 5 : 10
+          );
+        });
+
+        // 다음 프레임에 대해 객체 탐지를 계속 실행
+        requestAnimationFrame(detectObjects);
+      });
+    }
+
+    // 비디오가 재생 중일 때만 반복적으로 객체 탐지를 실행
+    detectObjects();
+  });
+</script>
+
+</body>
+</html>
