@@ -5,12 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Object Detection in MP4 Video</title>
   <style>
+    body{
+      overflow: hidden;
+    }
+
     .container {
       position: relative;
+      width: 100%;
+      height: 100%;
     }
     video {
-      width: 640px;
-      height: 360px;
+      width: 100%;
+      height: 100%;
     }
     canvas {
       position: absolute;
@@ -32,6 +38,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
 <script>
   const video = document.getElementById("video");
   const canvas = document.getElementById("canvas");
@@ -45,8 +52,8 @@
 
   // 비디오가 재생될 때 캔버스 크기를 비디오에 맞게 조정
   video.addEventListener("loadedmetadata", () => {
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    canvas.width = video.offsetWidth;
+    canvas.height = video.offsetHeight;
   });
 
   // 비디오에서 객체 인식을 수행하고, 결과를 캔버스에 그리기
@@ -61,11 +68,22 @@
         // 캔버스 지우기
         context.clearRect(0, 0, canvas.width, canvas.height);
 
+        // 비디오 원본 해상도와 렌더링된 해상도 간의 비율 계산
+        const scaleX = canvas.width / video.videoWidth;
+        const scaleY = canvas.height / video.videoHeight;
+
         // 예측된 객체의 바운딩 박스와 라벨을 그리기
         predictions.forEach(prediction => {
           const [x, y, width, height] = prediction.bbox;
+
+          // 좌표 및 크기를 렌더링된 비디오 크기에 맞게 조정
+          const scaledX = x * scaleX;
+          const scaledY = y * scaleY;
+          const scaledWidth = width * scaleX;
+          const scaledHeight = height * scaleY;
+
           context.beginPath();
-          context.rect(x, y, width, height);
+          context.rect(scaledX, scaledY, scaledWidth, scaledHeight);
           context.lineWidth = 2;
           context.strokeStyle = "red";
           context.fillStyle = "red";
@@ -73,8 +91,8 @@
           context.font = "18px Arial";
           context.fillText(
             `${prediction.class} (${Math.round(prediction.score * 100)}%)`,
-            x,
-            y > 10 ? y - 5 : 10
+            scaledX,
+            scaledY > 10 ? scaledY - 5 : 10
           );
         });
 
@@ -87,6 +105,7 @@
     detectObjects();
   });
 </script>
+
 
 </body>
 </html>
